@@ -42,8 +42,12 @@ class CALL(Operator):
                 operand_size = get_size_decl(GLOBALS[arg], get_operand_size=True)
                 reg = REG_BY_SIZE[GLOBALS[arg]][reg]
                 output += f"  mov {reg}, {operand_size} [{arg}]\n"
+            elif arg.isidentifier():
+                EXTERNS.add(arg)
+                output += f"  mov {reg}, {arg}\n"
             else:
                 output += f"  mov {reg}, {arg}\n"
+
         output += f"  call {self.func}\n"
         return output
 
@@ -58,12 +62,11 @@ class CONDITION(Operator):
         left, right = self.left, self.right
         if left in var_table:
             output += f"  mov {REG_BY_SIZE[var_table[left][0]]['rax']}, {get_size_decl(var_table[left][0], get_operand_size=True)} [rbp-{var_table[left][1]}]\n"
-        else:
+        else: # Either constant or identifier
             output += f"  mov rax, {left}\n"
-
         if right in var_table:
             output += f"  mov {REG_BY_SIZE[var_table[right][0]]['rdx']}, {get_size_decl(var_table[right][0], get_operand_size=True)} [rbp-{var_table[right][1]}]\n"
-        else:
+        else: # Either constant or identifier
             output += f"  mov rdx, {right}\n"
         
         output += "  cmp rax, rdx\n"

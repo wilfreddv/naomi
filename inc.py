@@ -44,7 +44,13 @@ REG_BY_SIZE = {
         8: {"rax": "rax", "rcx": "rcx", "rdx": "rdx", "rbx": "rbx", "rsi": "rsi", "rdi": "rdi", "r8": "r8", "r9": "r9", "r10": "r10", "r11": "r11"}
 }
 
-
 EXTERN_FUNCTIONS = set()
+EXTERNS = set()
 GLOBAL_FUNCTIONS = set()
 GLOBALS = {}
+
+def new_unit():
+    EXTERN_FUNCTIONS.clear()
+    EXTERNS.clear()
+    GLOBAL_FUNCTIONS.clear()
+    GLOBALS.clear()

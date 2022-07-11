@@ -78,6 +78,8 @@ def parse_globals(variables: List[Variable]) -> str:
         size = var.size
         size_decl = get_size_decl(size, has_value=value is not None)
         GLOBALS[name] = size
+        if var.type == "ptr" and value:
+            size_decl = "db"
         if value:
             has_data = True
             data += f"{name}:\n  {size_decl} {value}\n"
@@ -94,24 +96,29 @@ def create_code(program, of="prog") -> str:
     of += ".s"
     procedures = parse_procedures(program["procedures"])
     globals = parse_globals(program["globals"])
-
     assert not (GLOBAL_FUNCTIONS & EXTERN_FUNCTIONS), "Cannot have extern and global declaration"
 
     with open(of, "w") as f:
-        f.write("\n".join([f"extern {f}" for f in EXTERN_FUNCTIONS]) + "\n\n")
-        f.write("\n".join([f"global {f}" for f in GLOBAL_FUNCTIONS]) + "\n\n")
+        f.write("\n".join([f"extern {f}" for f in EXTERN_FUNCTIONS | EXTERNS]) + "\n\n")
+        f.write("\n".join([f"global {f}" for f in GLOBAL_FUNCTIONS]) + "\n")
+        f.write("\n".join([f"global {f}" for f in GLOBALS.keys()]) + "\n\n")
         f.write(f"{procedures}")
         f.write(f"{globals}")
 
     return of
 
 
-def comply(fin: str) -> int:
+def compile(fin: str, link=False, objs: List[str] = None) -> int:
     base = fin.split('.')[0]
     nasm = f"nasm -o build/{base}.o -gdwarf -felf64 {fin}"
-    ld = f"ld -o {base} libnaomi.a build/{base}.o"
+
+    if objs:
+        ld = f"ld -o {base} libnaomi.a {' '.join(objs)} build/{base}.o"
+    else:
+        ld = f"ld -o {base} libnaomi.a build/{base}.o"
+
     return subprocess.call(nasm.split()) or \
-        subprocess.call(ld.split())
+        link and subprocess.call(ld.split())
 
 
 if __name__ == '__main__':
