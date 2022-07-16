@@ -34,19 +34,31 @@ class CALL(Operator):
     def get_asm(self, var_table: Mapping[str, Tuple[int, int]]=None) -> str:
         output = ""
         for reg, arg in zip(CALLER_REGISTERS, self.args):
+            arg, *derefs = arg.split("*")
+            argsz = 1
+
             if var_table and arg in var_table.keys():
-                operand_size = get_size_decl(var_table[arg][0], get_operand_size=True)
+                argsz = var_table[arg][0]
+                operand_size = get_size_decl(argsz, get_operand_size=True)
                 reg = REG_BY_SIZE[var_table[arg][0]][reg]
                 output += f"  mov {reg}, {operand_size} [rbp-{var_table[arg][1]}]\n"
             elif arg in GLOBALS.keys():
-                operand_size = get_size_decl(GLOBALS[arg], get_operand_size=True)
-                reg = REG_BY_SIZE[GLOBALS[arg]][reg]
+                argsz = GLOBALS[arg]
+                operand_size = get_size_decl(argsz, get_operand_size=True)
+                reg = REG_BY_SIZE[argsz][reg]
                 output += f"  mov {reg}, {operand_size} [{arg}]\n"
             elif arg.isidentifier():
+                argsz = 8
                 EXTERNS.add(arg)
                 output += f"  mov {reg}, {arg}\n"
             else:
+                # argsz = anyone's guess
                 output += f"  mov {reg}, {arg}\n"
+
+            
+            for deref in map(int, derefs):
+                deref *= argsz
+                output += f"  mov {reg}, [{reg}+{deref}]\n"
 
         output += f"  call {self.func}\n"
         return output
