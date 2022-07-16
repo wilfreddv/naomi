@@ -109,6 +109,7 @@ def create_code(program, of="prog") -> str:
 
 
 def compile(fin: str, link=False, objs: List[str] = None) -> int:
+    new_unit()
     base = fin.split('.')[0]
     nasm = f"nasm -o build/{base}.o -gdwarf -felf64 {fin}"
 
