@@ -54,6 +54,7 @@ def parse_procedures(procs: List[Procedure]) -> str:
                 elif var.value:
                     var_section += f"  mov {get_size_decl(var.size, get_operand_size=True)} [rbp-{rolling_offset}], {var.value}\n"
 
+
         enter += f"  sub rsp, {rolling_offset}\n"
 
         if var_section:
@@ -87,6 +88,7 @@ def parse_globals(variables: List[Variable]) -> str:
             has_bss = True
             bss += f"{name}:\n  {size_decl} 1\n"
 
+
     ret = f"{data}\n" if has_data else ""
     ret += f"{bss}\n" if has_bss else ""
     return ret
@@ -101,7 +103,7 @@ def create_code(program, of="prog") -> str:
     with open(of, "w") as f:
         f.write("\n".join([f"extern {f}" for f in EXTERN_FUNCTIONS | EXTERNS]) + "\n\n")
         f.write("\n".join([f"global {f}" for f in GLOBAL_FUNCTIONS]) + "\n")
-        f.write("\n".join([f"global {f}" for f in GLOBALS.keys()]) + "\n\n")
+        # f.write("\n".join([f"global {f}" for f in GLOBALS.keys()]) + "\n\n")
         f.write(f"{procedures}")
         f.write(f"{globals}")
 
@@ -109,14 +111,13 @@ def create_code(program, of="prog") -> str:
 
 
 def compile(fin: str, link=False, objs: List[str] = None) -> int:
-    new_unit()
     base = fin.split('.')[0]
     nasm = f"nasm -o build/{base}.o -gdwarf -felf64 {fin}"
 
     if objs:
-        ld = f"ld -o {base} libnaomi.a {' '.join(objs)} build/{base}.o"
+        ld = f"ld -o {base} {' '.join(objs)} build/{base}.o libnaomi.a"
     else:
-        ld = f"ld -o {base} libnaomi.a build/{base}.o"
+        ld = f"ld -o {base} build/{base}.o libnaomi.a"
 
     return subprocess.call(nasm.split()) or \
         link and subprocess.call(ld.split())

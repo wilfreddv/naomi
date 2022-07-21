@@ -1,2 +1,2 @@
-libnaomi/library.s
 libnaomi/isconv.s
+libnaomi/library.s
