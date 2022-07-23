@@ -162,7 +162,8 @@ class RETURN(Operator):
     
     def get_asm(self, var_table: Mapping[str, Tuple[int, int]]=None) -> str:
         if not self.ret_val:
-            return "  leave\n  ret\n"
+            if var_table: output = "  leave\n"
+            return output + "  ret\n"
 
         if var_table and self.ret_val in var_table.keys():
             operand_size = get_size_decl(var_table[self.ret_val][0], get_operand_size=True)
@@ -188,12 +189,48 @@ class SUB(Operator):
         self.right = right
 
     def get_asm(self, var_table: Mapping[str, Tuple[int, int]]=None) -> str:
-        output = f"  mov rax, [rbp-{var_table[self.left][1]}]\n"
-        output += f"  mov rdx, [rbp-{var_table[self.right][1]}]\n"
-        output += "  sub rax, rdx\n"
-        output += f"  mov [rbp-{var_table[self.dest][1]}], rax\n"
-        return output
+        output = ""
 
+        if self.left in var_table:
+            varsz = var_table[self.left][0]
+            opsz = get_size_decl(varsz, get_operand_size=True)
+            reg = REG_BY_SIZE[varsz]['rax']
+            offset = var_table[self.left][1]
+            output += f"  mov {reg}, {opsz} [rbp-{offset}]\n"
+            dest = f"  mov [rbp-{offset}], {opsz} {reg}\n"
+        elif self.left in GLOBALS:
+            varsz = GLOBALS[self.left][0]
+            opsz = get_size_decl(varsz, get_operand_size=True)
+            reg = REG_BY_SIZE[varsz]['rax']
+            output += f"  mov {reg}, {opsz} [{self.left}]\n"
+            dest = f"  mov [{self.left}], {opsz} {reg}\n"
+        elif self.left in EXTERNS:
+            varsz = EXTERNS[self.left]
+            opsz = get_size_decl(varsz, get_operand_size=True)
+            reg = REG_BY_SIZE[varsz]['rax']
+            output += f"  mov {reg}, {opsz} [{self.left}]\n"
+            dest = f"  mov [{self.left}], {opsz} {reg}\n"
+        
+        if self.right in var_table:
+            varsz = var_table[self.left][0]
+            opsz = get_size_decl(varsz, get_operand_size=True)
+            output += f"  mov {REG_BY_SIZE[varsz]['rbx']}, {opsz} [rbp-{var_table[self.right][1]}]\n"
+        elif self.left in GLOBALS:
+            varsz = GLOBALS[self.right][0]
+            opsz = get_size_decl(varsz, get_operand_size=True)
+            output += f"  mov {REG_BY_SIZE[varsz]['rbx']}, {opsz} [{self.left}]\n"
+        elif self.left in EXTERNS:
+            varsz = EXTERNS[self.right]
+            opsz = get_size_decl(varsz, get_operand_size=True)
+            output += f"  mov {REG_BY_SIZE[varsz]['rbx']}, {opsz} [{self.left}]\n"
+
+        if self.right == "1":
+            output += f"  dec {reg}\n"
+        else:
+            output += f"  sub {reg}, {REG_BY_SIZE[varsz]['rbx']}\n"
+
+        output += dest
+        return output
 
 class ADD(Operator):
     def __init__(self, left, right):
@@ -242,7 +279,6 @@ class ADD(Operator):
             output += f"  add {reg}, {REG_BY_SIZE[varsz]['rbx']}\n"
 
         output += dest
-
         return output
 
 class SUBTRACT(Operator):
