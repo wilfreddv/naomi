@@ -77,9 +77,10 @@ def parse_globals(variables: List[Variable]) -> str:
         name = var.name
         value = var.value
         size = var.size
+        type = var.type
         size_decl = get_size_decl(size, has_value=value is not None)
-        GLOBALS[name] = size
-        if var.type == "ptr" and value:
+        GLOBALS[name] = (size, type)
+        if type == "ptr" and value:
             size_decl = "db"
         if value:
             has_data = True
@@ -96,14 +97,13 @@ def parse_globals(variables: List[Variable]) -> str:
 
 def create_code(program, of="prog") -> str:
     of += ".s"
-    procedures = parse_procedures(program["procedures"])
     globals = parse_globals(program["globals"])
+    procedures = parse_procedures(program["procedures"])
     assert not (GLOBAL_FUNCTIONS & EXTERN_FUNCTIONS), "Cannot have extern and global declaration"
 
     with open(of, "w") as f:
         f.write("\n".join([f"extern {f}" for f in EXTERN_FUNCTIONS | EXTERNS]) + "\n\n")
         f.write("\n".join([f"global {f}" for f in GLOBAL_FUNCTIONS]) + "\n")
-        # f.write("\n".join([f"global {f}" for f in GLOBALS.keys()]) + "\n\n")
         f.write(f"{procedures}")
         f.write(f"{globals}")
 

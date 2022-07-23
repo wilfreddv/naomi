@@ -41,7 +41,7 @@ class ASSIGN(Operator):
                 varsz = var_table[cst][0]
                 src = f"[rbp-{var_table[cst][1]}]"
             elif cst in GLOBALS:
-                varsz = GLOBALS[self.var]
+                varsz = GLOBALS[self.var][0]
                 src = f"[{cst}]"
             elif cst in EXTERNS:
                 varsz = EXTERNS[self.var]
@@ -58,7 +58,7 @@ class ASSIGN(Operator):
             opsz = get_size_decl(varsz, get_operand_size=True)
             output += f"  mov {opsz} [rbp-{var_table[self.var][1]}], {cst or REG_BY_SIZE[varsz]['rax']}\n"
         elif self.var in GLOBALS:
-            varsz = GLOBALS[self.var]
+            varsz = GLOBALS[self.var][0]
             opsz = get_size_decl(varsz, get_operand_size=True)
             output += f"  mov {opsz} [{self.var}], {cst or REG_BY_SIZE[varsz]['rax']}\n"
         elif self.var in EXTERNS:
@@ -77,7 +77,7 @@ class CALL(Operator):
             EXTERN_FUNCTIONS.add(self.func)
 
     def get_asm(self, var_table: Mapping[str, Tuple[int, int]]=None) -> str:
-        output = ""
+        output = f"  ; CALL {self.func}({','.join(self.args)})\n"
         for reg, arg in zip(CALLER_REGISTERS, self.args):
             arg, *derefs = arg.split("*")
             argsz = 1
@@ -88,10 +88,14 @@ class CALL(Operator):
                 reg = REG_BY_SIZE[var_table[arg][0]][reg]
                 output += f"  mov {reg}, {operand_size} [rbp-{var_table[arg][1]}]\n"
             elif arg in GLOBALS.keys():
-                argsz = GLOBALS[arg]
+                argsz = GLOBALS[arg][0]
                 operand_size = get_size_decl(argsz, get_operand_size=True)
                 reg = REG_BY_SIZE[argsz][reg]
-                output += f"  mov {reg}, {operand_size} [{arg}]\n"
+                
+                if GLOBALS[arg][1] == "ptr":
+                    output += f"  mov {reg}, {operand_size} {arg}\n"    
+                else:
+                    output += f"  mov {reg}, {operand_size} [{arg}]\n"
             elif arg.isidentifier():
                 argsz = 8
                 EXTERNS.add(arg)
@@ -103,7 +107,7 @@ class CALL(Operator):
             
             for deref in map(int, derefs):
                 deref *= argsz
-                output += f"  mov {reg}, [{reg}+{deref}]\n"
+                output += f"  mov {reg}, [{reg}+{deref}] ; deref\n"
 
         output += f"  call {self.func}\n"
         return output
@@ -165,8 +169,8 @@ class RETURN(Operator):
             reg = REG_BY_SIZE[var_table[self.ret_val][0]]["rax"]
             output = f"  mov {reg}, {operand_size} [rbp-{var_table[self.ret_val][1]}]\n"
         elif self.ret_val in GLOBALS.keys():
-            operand_size = get_size_decl(GLOBALS[self.ret_val], get_operand_size=True)
-            reg = REG_BY_SIZE[GLOBALS[self.ret_val]][reg]
+            operand_size = get_size_decl(GLOBALS[self.ret_val][0], get_operand_size=True)
+            reg = REG_BY_SIZE[GLOBALS[self.ret_val][0]][reg]
             output += f"  mov {reg}, {operand_size} [{self.ret_val}]\n"
         elif self.ret_val:
             output = f"  mov rax, {self.ret_val}\n"
@@ -207,7 +211,7 @@ class ADD(Operator):
             output += f"  mov {reg}, {opsz} [rbp-{offset}]\n"
             dest = f"  mov [rbp-{offset}], {opsz} {reg}\n"
         elif self.left in GLOBALS:
-            varsz = GLOBALS[self.left]
+            varsz = GLOBALS[self.left][0]
             opsz = get_size_decl(varsz, get_operand_size=True)
             reg = REG_BY_SIZE[varsz]['rax']
             output += f"  mov {reg}, {opsz} [{self.left}]\n"
@@ -224,7 +228,7 @@ class ADD(Operator):
             opsz = get_size_decl(varsz, get_operand_size=True)
             output += f"  mov {REG_BY_SIZE[varsz]['rbx']}, {opsz} [rbp-{var_table[self.right][1]}]\n"
         elif self.left in GLOBALS:
-            varsz = GLOBALS[self.right]
+            varsz = GLOBALS[self.right][0]
             opsz = get_size_decl(varsz, get_operand_size=True)
             output += f"  mov {REG_BY_SIZE[varsz]['rbx']}, {opsz} [{self.left}]\n"
         elif self.left in EXTERNS:
