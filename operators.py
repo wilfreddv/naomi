@@ -93,7 +93,7 @@ class CALL(Operator):
                 reg = REG_BY_SIZE[argsz][reg]
                 
                 if GLOBALS[arg][1] == "ptr":
-                    output += f"  mov {reg}, {operand_size} {arg}\n"    
+                    output += f"  lea {reg}, [{arg}]\n"    
                 else:
                     output += f"  mov {reg}, {operand_size} [{arg}]\n"
             elif arg.isidentifier():
