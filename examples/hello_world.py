@@ -17,4 +17,4 @@ PROG = {
         )
     ]
 }
-compile(create_code(PROG), link=True)
+compile(create_code(PROG, "hello_world"), link=True)
